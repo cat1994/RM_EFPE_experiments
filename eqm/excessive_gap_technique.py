@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 class ExcessiveGapTechnique(EquilibriumAlgorithm):
     def __init__(self, game, prox_x=None, prox_y=None, L=1.0, mu=2.0, aggressive_stepsizes=True, x=None, y=None,
-                 gradient_computations=0, init_gap=0.0, init_update_x=False, allowed_eps_increase=-1., epsilon=0, ):
+                 gradient_computations=0, init_gap=0.0, init_update_x=False, allowed_exp_increase=-1., epsilon=0, ):
         EquilibriumAlgorithm.__init__(self, game)
         self._prox_x = prox_x if prox_x is not None else game.domain(0).prox()
         self._prox_y = prox_y if prox_y is not None else game.domain(1).prox()
@@ -21,7 +21,7 @@ class ExcessiveGapTechnique(EquilibriumAlgorithm):
         self._aggressive_stepsizes = aggressive_stepsizes
         self._init_gap = init_gap
         self._init_update_x = init_update_x
-        self._allowed_eps_increase = allowed_eps_increase
+        self._allowed_exp_increase = allowed_exp_increase
         self._w = 1
         if aggressive_stepsizes:
             self._tau = 1.0 / 2.0
@@ -82,11 +82,12 @@ class ExcessiveGapTechnique(EquilibriumAlgorithm):
 
     def get_params_string(self):
         return 'val={:0.3f},\teps={:0.3f},\tmu=[{:0.8f}, {:0.8f}]\tgap={:0.4f}\tstep={:0.4f}'.format(
-            self.profile_value(), self.epsilon(), self._mu[0], self._mu[1], self.excessive_gap(), self._tau)
+            self.profile_value(), self.exploitability(), self._mu[0], self._mu[1], self.excessive_gap(), self._tau)
 
     def get_current_iterate_string(self):
         return np.array_str(self._x, max_line_width=999, suppress_small=True) + '\n' + np.array_str(self._y,
-            max_line_width=999, suppress_small=True)
+                                                                                                    max_line_width=999,
+                                                                                                    suppress_small=True)
 
     def iterate(self, num_iterations=1):
         for _ in range(num_iterations):
@@ -110,11 +111,11 @@ class ExcessiveGapTechnique(EquilibriumAlgorithm):
             self._w += 1
 
     def worse_than_old(self, old_x, old_y, new_x, new_y):
-        if self._allowed_eps_increase <= 1.0:
+        if self._allowed_exp_increase <= 1.0:
             return False
         old_eps, _, _, _, _ = self._game.profile_epsilon(old_x, old_y)
         new_eps, _, _, _, _ = self._game.profile_epsilon(new_x, new_y)
-        return new_eps > old_eps * self._allowed_eps_increase
+        return new_eps > old_eps * self._allowed_exp_increase
 
     def shrink(self, tau, x, y):
         # uncomment this line and comment the following line to do
@@ -133,12 +134,12 @@ class ExcessiveGapTechnique(EquilibriumAlgorithm):
         # check
 
         u_x = self._game.utility_for(player, y)
-        _, _, br_x = smooth_br_x(-1.0, u_x, self._mu[player])  # 1 g+=1
+        _, _, br_x = smooth_br_x(-1.0, u_x, self._mu[player])
         assert self._game.domain(player).is_behavioral_form(br_x)
-        hat_x = self._game.domain(player).combine(x, tau, br_x)  # g+=1
+        hat_x = self._game.domain(player).combine(x, tau, br_x)
 
         u_y = self._game.utility_for(opponent, hat_x)
-        _, _, br_y = smooth_br_y(-1.0, u_y, self._mu[opponent])  # 2 # gradient +1
+        _, _, br_y = smooth_br_y(-1.0, u_y, self._mu[opponent])
         if player == 0:
             self._y = self._game.domain(opponent).combine(y, tau, br_y)
         else:
@@ -146,7 +147,7 @@ class ExcessiveGapTechnique(EquilibriumAlgorithm):
 
         u_x = self._game.utility_for(player, br_y)
         assert self._game.domain(player).is_behavioral_form(br_x)
-        _, _, br_x = prox_x(-tau, u_x, (1 - tau) * self._mu[player], br_x)  # 3?
+        _, _, br_x = prox_x(-tau, u_x, (1 - tau) * self._mu[player], br_x)
         if player == 0:
             self._x = self._game.domain(player).combine(x, tau, br_x)
         else:

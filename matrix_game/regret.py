@@ -23,7 +23,6 @@ class RegretMatching:
         r = p * r + a @ r
 
         self.regret += r
-        #np.maximum(self.regret, 0, out=self.regret)
         np.maximum(self.regret, 0, out=self.strategy)
 
         Z = np.sum(self.strategy)

@@ -1,14 +1,10 @@
-from extensive_form_game import extensive_form_game as efg
 from scipy.sparse import lil_matrix
 
+from extensive_form_game import extensive_form_game as efg
 
-def init_efg(num_ranks=3,
-             prox_infoset_weights=False,
-             prox_scalar=-1,
-             integer=False,
-             all_negative=False,
-             num_raise_sizes=1,
-             max_bets=2):
+
+def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=False, all_negative=False,
+             num_raise_sizes=1, max_bets=2):
     assert num_ranks >= 2
     deck_size = num_ranks * 2
     if integer:
@@ -16,8 +12,7 @@ def init_efg(num_ranks=3,
         rollout_combinations = 1
     else:
         hand_combinations = 1.0 / float(deck_size * (deck_size - 1))
-        rollout_combinations = 1.0 / float(deck_size * (deck_size - 1) * \
-                                     (deck_size - 2))
+        rollout_combinations = 1.0 / float(deck_size * (deck_size - 1) * (deck_size - 2))
 
     parent = ([], [])
     begin = ([], [])
@@ -38,7 +33,7 @@ def init_efg(num_ranks=3,
                 return 2 * hand_combinations
             return 4 * hand_combinations
         if i == board and j == board:
-            return 0  # =0， 算到达概率时避免除以0
+            return 0
         elif i == board or j == board or i == j:
             return 4 * rollout_combinations
         return 8 * rollout_combinations
@@ -47,13 +42,10 @@ def init_efg(num_ranks=3,
         for i in range(num_ranks):
             for j in range(num_ranks):
                 payoff.append((previous_seq[0][i], previous_seq[1][j],
-                               _p_chance(rnd, board, i, j) *
-                               (value(i, j) + payoff_shift)))
+                               _p_chance(rnd, board, i, j) * (value(i, j) + payoff_shift)))
                 if all_negative:
-                    payoff_p1.append((
-                        previous_seq[0][i], previous_seq[1][j],
-                        _p_chance(rnd, board, i, j) * (-value(i, j) + \
-                                                     payoff_shift)))
+                    payoff_p1.append((previous_seq[0][i], previous_seq[1][j],
+                                      _p_chance(rnd, board, i, j) * (-value(i, j) + payoff_shift)))
 
     def _build_fold(rnd, board, who_folded, win_amount, previous_seq):
         if who_folded == 1:
@@ -82,8 +74,7 @@ def init_efg(num_ranks=3,
         opponent = 1 - actor
         facing = pot[opponent] - pot[actor]  # face actual payoff
         pot_actor = pot[actor]
-        num_actions = (facing >
-                       0) + 1 + (num_bets < max_bets) * num_raise_sizes  # fold(if other ), call, raise
+        num_actions = (facing > 0) + 1 + (num_bets < max_bets) * num_raise_sizes  # fold(if other ), call, raise
         action = 0
         first_action = (actor == 0 and num_bets == 0)
 
@@ -94,8 +85,7 @@ def init_efg(num_ranks=3,
             next_s[actor] += num_actions
             end[actor].append(next_s[actor])
             for j in range(num_ranks):
-                reach.append((actor, info_set + i, previous_seq[opponent][j],
-                              _p_chance(rnd, board, i, j)))
+                reach.append((actor, info_set + i, previous_seq[opponent][j], _p_chance(rnd, board, i, j)))
 
         def _pn(idx):  # update the information precious seq idx, which seq reaches the information set
             t = [begin[actor][info_set + i] + idx for i in range(num_ranks)]
@@ -122,10 +112,7 @@ def init_efg(num_ranks=3,
                 init_raise_size = 2
             else:
                 init_raise_size = 4
-            for raise_amt in [
-                    init_raise_size * raise_size
-                    for raise_size in range(1, num_raise_sizes + 1)
-            ]:
+            for raise_amt in [init_raise_size * raise_size for raise_size in range(1, num_raise_sizes + 1)]:
                 pot[actor] = pot[opponent] + raise_amt
                 _build(rnd, board, opponent, 1 + num_bets, pot, _pn(action))
                 action += 1
@@ -141,8 +128,7 @@ def init_efg(num_ranks=3,
         payoff_matrix = lil_matrix((next_s[0], next_s[1]))
     for i, j, payoff_value in payoff:
         payoff_matrix[i, j] += payoff_value
-    reach_matrix = (lil_matrix((len(begin[0]), next_s[1])), lil_matrix(
-        (len(begin[1]), next_s[0])))
+    reach_matrix = (lil_matrix((len(begin[0]), next_s[1])), lil_matrix((len(begin[1]), next_s[0])))
     for player, infoset, opponent_seq, prob in reach:
         reach_matrix[player][infoset, opponent_seq] += prob
     # import numpy as np
@@ -154,25 +140,9 @@ def init_efg(num_ranks=3,
             payoff_p1_matrix = lil_matrix((next_s[0], next_s[1]))
         for i, j, payoff_value in payoff_p1:
             payoff_p1_matrix[i, j] += payoff_value
-        return efg.ExtensiveFormGame(
-            'Leduc-%d' % num_ranks,
-            payoff_matrix,
-            begin,
-            end,
-            parent,
-            prox_infoset_weights=prox_infoset_weights,
-            prox_scalar=prox_scalar,
-            reach=reach_matrix,
-            B=payoff_p1_matrix,
-            offset=2 * payoff_shift * (deck_size * (deck_size - 1) *
-                                       (deck_size - 2)))
+        return efg.ExtensiveFormGame('Leduc-%d' % num_ranks, payoff_matrix, begin, end, parent,
+            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix, B=payoff_p1_matrix,
+            offset=2 * payoff_shift * (deck_size * (deck_size - 1) * (deck_size - 2)))
     else:
-        return efg.ExtensiveFormGame(
-            'Leduc-%d' % num_ranks,
-            payoff_matrix,
-            begin,
-            end,
-            parent,
-            prox_infoset_weights=prox_infoset_weights,
-            prox_scalar=prox_scalar,
-            reach=reach_matrix)
+        return efg.ExtensiveFormGame('Leduc-%d' % num_ranks, payoff_matrix, begin, end, parent,
+            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix)

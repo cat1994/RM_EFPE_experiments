@@ -29,10 +29,9 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
         elif c1 < c2:
             return 0, -r
         else:
-            return -r / 2, -r / 2  # in Noam's paper, the same bid card split the reward
+            return -r / 2, -r / 2
 
-    def _compute_results(r1, r2):  # r denote the loss score
-        # print(r1,r2)
+    def _compute_results(r1, r2):  # r denotes the loss
         if r1 < r2:
             return -1
         elif r1 > r2:
@@ -52,8 +51,6 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
 
             rnd_start.append(1)
             dim += i ** 2
-            # num_leaf += i ** 3
-            # leaf.append(1)
             num_info += deck_size
         else:
             rnd_start.append(dim)
@@ -83,21 +80,18 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
     info_index = [0, 0]
 
     def _build(rnd, deck_list, h1, h2, pre_seq1, pre_seq2, r1, r2):
-        # print(rnd, deck_list, h1, h2, pre_seq1, pre_seq2)
         # rnd: GAME ROUND: 0-deck_size
         if rnd == deck_size:
             return
 
         num = len(deck_list)
         for i in range(num):  # deal deck card
-            # info_index[0] += 1
             begin1 = next_s[0]
             begin[0].append(begin1)
             end[0].append(begin1 + num)
             parent[0].append(pre_seq1)
             next_s[0] += num
 
-            # info_index[1] += 1
             begin2 = next_s[1]
             begin[1].append(begin2)
             end[1].append(begin2 + num)
@@ -113,26 +107,20 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
                     c0 = deck_list[i]
                     c1 = h1[j]
                     c2 = h2[k]
-                    # copy pare
                     _deck_list = copy.copy(deck_list)
                     _h1 = copy.copy(h1)
                     _h2 = copy.copy(h2)
-                    # _seq1 = copy.copy(seq1)
-                    # _seq2 = copy.copy(seq2)
 
                     # set para
                     _deck_list.remove(c0)
                     _h1.remove(c1)
                     _h2.remove(c2)
-                    # _seq1.append(c1)
-                    # _seq2.append(c2)
+
                     idx1 = begin1 + j
                     idx2 = begin2 + k
 
                     # payoff matrix
                     r1_c, r2_c = _show_down(c0, c1, c2)
-                    # r1+=r1_c
-                    # r2+=r2_c
 
                     if rnd + 1 == deck_size:
                         payoff_p1_matrix[idx1, idx2] += (r1 - r2 + r1_c - r2_c) * chance
@@ -145,9 +133,10 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
     if all_negative:
 
         return efg.ExtensiveFormGame('Goofspiel-%d' % num_ranks, payoff_p1_matrix, begin, end, parent,
-            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix, B=payoff_p2_matrix,
-            # B=None,
-            offset=2 * payoff_shift * (deck_size * (deck_size - 1) * (deck_size - 2)))
+                                     prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar,
+                                     reach=reach_matrix, B=payoff_p2_matrix, # B=None,
+                                     offset=2 * payoff_shift * (deck_size * (deck_size - 1) * (deck_size - 2)))
     else:
         return efg.ExtensiveFormGame('Goofspiel-%d' % num_ranks, payoff_p1_matrix, begin, end, parent,
-            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix, B=None, )
+                                     prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar,
+                                     reach=reach_matrix, B=None, )

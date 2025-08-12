@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from poker import kuhn
+from games import kuhn
 from extensive_form_game import treeplex
 from matrix_game import simplex
 

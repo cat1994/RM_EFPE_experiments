@@ -12,9 +12,8 @@ warnings.simplefilter("error", RuntimeWarning)
 
 # type: 0
 class MirrorDescent(EquilibriumAlgorithm):
-    def __init__(self, game, prox_x=None, prox_y=None, is_last=False, rt_type=0, weight=1.0, rt_weight=None,
-                 # rt have different form： \mu*(xr-x), mu*log(x/xr),
-                 rt_step=1, epsilon=0, qpe=False, epsilon_qpe=0, name='Mirror Descent'):
+    def __init__(self, game, prox_x=None, prox_y=None, is_last=False, rt_type=0, weight=1.0, rt_weight=None, rt_step=1,
+                 epsilon=0, name='Mirror Descent'):
         EquilibriumAlgorithm.__init__(self, game, name=name)
 
         self._prox_x = prox_x if prox_x is not None else game.domain(0).prox()
@@ -72,9 +71,9 @@ class MirrorDescent(EquilibriumAlgorithm):
 
     def compute_rt(self, x, x_r, w):
         rt_methods = {0: lambda: np.zeros(len(x)), 1: lambda: (x_r - x) * w,  # Abe, Meng 2024 Mutant MWU, RT MWU
-            2: lambda: np.log(self.solve_log0(x_r / self.solve_log0(x))) * w,  # Perolat 2021 R-NaD, OR-NaD
-            3: lambda: (np.log(self.solve_log0(x)) + 1) * w,  # Liu 2023 Reg-OMWU
-        }
+                      2: lambda: np.log(self.solve_log0(x_r / self.solve_log0(x))) * w,  # Perolat 2021 R-NaD, OR-NaD
+                      3: lambda: (np.log(self.solve_log0(x)) + 1) * w,  # Liu 2023 Reg-OMWU
+                      }
 
         try:
             rt = rt_methods[self._rt_type]()
@@ -85,13 +84,12 @@ class MirrorDescent(EquilibriumAlgorithm):
 
     def take_step(self):
         rt_x = self.compute_rt(self._c_x, self._r_x, self._rt_weight)  # compute rt term
-
         g_x = self._game.utility_for(0, self._c_y) + rt_x  # utility
-        _, x = self._prox_x(-1, g_x, self._weight, self._c_x)  # min
+        _, _, x = self._prox_x(-1, g_x, self._weight, self._c_x)  # min
 
         rt_y = self.compute_rt(self._c_y, self._r_y, self._rt_weight)  # compute rt term
         g_y = self._game.utility_for(1, self._c_x) + rt_y  # utility
-        _, self._c_y = self._prox_y(-1, g_y, self._weight, self._c_y)  # min
+        _, _, self._c_y = self._prox_y(-1, g_y, self._weight, self._c_y)  # min
         self._gradient_computations += 1
 
         self._c_x = x.copy()
@@ -121,8 +119,8 @@ class PredictiveMirrorDescent(MirrorDescent):
         self._c_x_hat = self._c_x.copy()
         self._c_y_hat = self._c_y.copy()
         self._rt_weight = rt_weight
-        self.exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                                regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+        self.exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                       regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
 
         self._name = name
 
@@ -160,8 +158,8 @@ class PredictiveMirrorDescent(MirrorDescent):
 
         # shrink tau:
         if self._rt_type == 3:
-            exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                               regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+            exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                      regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
             if exp < self.exp / 4:  # paper sets 4
                 self.exp = exp
                 self._rt_weight /= 2
@@ -215,8 +213,8 @@ class DS_PredictiveMirrorDescent(MirrorDescent):
         self._v_y = self._game.utility_for(1, self._c_x)
         # self._v_2_y = np.zeros(game.domain(1).dimension())
 
-        self.exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                                regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+        self.exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                       regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
         self._name = name
 
     def take_step(self):
@@ -264,8 +262,8 @@ class DS_PredictiveMirrorDescent(MirrorDescent):
 
         # shrink tau:
         if True:
-            exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                               regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+            exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                      regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
             if exp < self.exp / 4:  # paper sets 4
                 self.exp = exp
                 self._rt_weight /= 2
@@ -291,8 +289,8 @@ class PredictiveMirrorDescent_EFPE(MirrorDescent):
                                         axis=0)
         self._rt_weight_x = self._rt_weight * self._w_seq_x
         self._rt_weight_y = self._rt_weight * self._w_seq_y
-        self.exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                                regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+        self.exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                       regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
         self._name = name
 
     def take_step(self):
@@ -323,43 +321,28 @@ class PredictiveMirrorDescent_EFPE(MirrorDescent):
             self._x = self._game.domain(0).combine(self._x, 1 / self._t, self._c_x)
             self._y = self._game.domain(1).combine(self._y, 1 / self._t, self._c_y)
 
-        exp = self.epsilon(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
-                           regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
+        exp = self.exploitability(regularizer_x=self.compute_rt(self._x, self._r_x, self._rt_weight),
+                                  regularizer_y=self.compute_rt(self._y, self._r_y, self._rt_weight))
         if exp < self.exp * 0.25:  # paper sets 1/4
             self.exp = exp
             self._rt_weight /= 2
-        # shrink tau:
-        if self._epsilon != 0 and self._t >= self._num_seq[
-            self._k + 1]:  # paper “Learning Extensive-Form Perfect Equilibria in Two-Player Zero-Sum Sequential Games” does not use this decrease method
-            if True:
-                self._k += 1
-
-                self._epsilon = self._epsilon_seq[self._k]
-
-                self._prox_x.set_epsilon(self._epsilon)
-                self._prox_y.set_epsilon(self._epsilon)
+        # shrink epsilon adaptively:
+        if self._epsilon != 0 and self._t >= self._num_seq[self._k + 1]:
+            self._k += 1
+            self._epsilon = self._epsilon_seq[self._k]
+            self._prox_x.set_epsilon(self._epsilon)
+            self._prox_y.set_epsilon(self._epsilon)
 
         if self._is_rt and self._t >= self._next_rt_num:
-            if False:
-                self._k += 1
-                self._rt_step = int(self._beta ** self._k)
-                self._epsilon = (1 - 1e-4) ** self._k
-                self._rt_weight = self._epsilon ** 2
-                self._rt_weight_x = self._rt_weight * self._w_seq_x
-                self._rt_weight_y = self._rt_weight * self._w_seq_y
-
             self._next_rt_num += self._rt_step
-
             self._r_x = self._c_x.copy()
             self._r_y = self._c_y.copy()
         self._t += 1
 
-        # if self.self._tk
-
 
 def mirror_descent_init(mirror_type=0, weight=None, rt_weight=1, rt_step=1, is_tuned=False, tuned_num=20,
-        highest_multiplier=10, lowest_multiplier=0.001, rt_weight_tuned=None, rt_step_tuned=None, iterate_num=200,
-        **kwargs):
+                        highest_multiplier=10, lowest_multiplier=0.001, rt_weight_tuned=None, rt_step_tuned=None,
+                        iterate_num=200, **kwargs):
     if rt_step_tuned is None:
         rt_step_tuned = {rt_step}
     if rt_weight_tuned is None:
@@ -367,12 +350,12 @@ def mirror_descent_init(mirror_type=0, weight=None, rt_weight=1, rt_step=1, is_t
 
     def mirror_type_function(mirror_type, game, weight, rt_weight, rt_step, **kwargs):
         mirror_class = {0: lambda: MirrorDescent(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step, **kwargs),
-            1: lambda: PredictiveMirrorDescent(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step, **kwargs),
-            2: lambda: DS_PredictiveMirrorDescent(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step, **kwargs),
-            3: lambda: PredictiveMirrorDescent_EFPE(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step,
-                                                    **kwargs),
-
-        }
+                        1: lambda: PredictiveMirrorDescent(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step,
+                                                           **kwargs),
+                        2: lambda: DS_PredictiveMirrorDescent(game, weight=weight, rt_weight=rt_weight, rt_step=rt_step,
+                                                              **kwargs),
+                        3: lambda: PredictiveMirrorDescent_EFPE(game, weight=weight, rt_weight=rt_weight,
+                                                                rt_step=rt_step, **kwargs), }
         try:
             mr = mirror_class[mirror_type]()
         except KeyError:
@@ -402,7 +385,7 @@ def mirror_descent_init(mirror_type=0, weight=None, rt_weight=1, rt_step=1, is_t
                         algs_list.append(mirror_type_function(mirror_type, game, weight, rt_weight, rt_step, epsilon=0,
                                                               **kwargs_copy))
 
-            weight, rt_weight, rt_step, _ = tuned_params(algs_list, iterate_num=iterate_num, file_path=file_path)
+            weight, rt_weight, rt_step, _ = tune_params(algs_list, iterate_num=iterate_num, file_path=file_path)
         return mirror_type_function(mirror_type, game, weight, rt_weight, rt_step, **kwargs)
 
     return init
@@ -414,25 +397,25 @@ def get_class(class_name, ):
     return getattr(importlib.import_module(module), module_name[-1])
 
 
-def tuned_params(algs_list, iterate_num=200, file_path=""):
+def tune_params(algs_list, iterate_num=200, file_path=""):
     best_par = []
-    best_eps = np.inf
+    best_exp = np.inf
 
     with open(file_path, "a") as f:
-        f.write(f'\ninterate num: {iterate_num}########################################################\n')
+        f.write(f'\n iterate num: {iterate_num}########################################################\n')
 
         for t in range(len(algs_list)):
             alg = algs_list[t]
             alg.iterate(iterate_num)
-            eps = alg.epsilon()
+            exp = alg.exploitability()
             par = [alg.weight(), alg.rt_weight(), alg.rt_step()]
 
-            if eps < best_eps:
+            if exp < best_exp:
                 best_par = par
-                best_eps = eps
+                best_exp = exp
 
-            log_message = f'tuned params: t: {t}, par: {par}, eps: {eps}, best_par: {best_par}, best_eps: {best_eps}\n'
+            log_message = f'tuned params: t: {t}, par: {par}, eps: {exp}, best_par: {best_par}, best_eps: {best_exp}\n'
             print(log_message)
             f.write(log_message)
 
-    return best_par[0], best_par[1], best_par[2], best_eps
+    return best_par[0], best_par[1], best_par[2], best_exp

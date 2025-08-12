@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
-from poker import kuhn
+from games import kuhn
+
 
 class TestKuhn(unittest.TestCase):
     def setUp(self):

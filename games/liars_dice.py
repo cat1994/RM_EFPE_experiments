@@ -154,8 +154,10 @@ def init_efg(num_ranks=3, prox_infoset_weights=False, prox_scalar=-1, integer=Fa
         for i, j, payoff_value in payoff_p1:
             payoff_p1_matrix[i, j] += payoff_value
         return efg.ExtensiveFormGame('Liars Dice-%d' % num_dice, payoff_matrix, begin, end, parent,
-            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix, B=payoff_p1_matrix,
-            offset=2 * payoff_shift * (deck_size * (deck_size - 1) * (deck_size - 2)))
+                                     prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar,
+                                     reach=reach_matrix, B=payoff_p1_matrix,
+                                     offset=2 * payoff_shift * (deck_size * (deck_size - 1) * (deck_size - 2)))
     else:
         return efg.ExtensiveFormGame('Liars Dice-%d' % num_dice, payoff_matrix, begin, end, parent,
-            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar, reach=reach_matrix)
+                                     prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar,
+                                     reach=reach_matrix)

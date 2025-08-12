@@ -36,11 +36,10 @@ class ExtensiveFormGame:
             else:
                 self._reach = (reach[0].tocsr(), reach[1].tocsr())
         self._A_T = self._A.transpose()
-        # print(A, first, end, parent)
         self._domains = (TreeplexDomain(self._A.get_shape()[0], first[0], end[0], parent[0], seq_to_str[0],
-            prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar),
+                                        prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar),
                          TreeplexDomain(self._A.get_shape()[1], first[1], end[1], parent[1], seq_to_str[1],
-                             prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar))
+                                        prox_infoset_weights=prox_infoset_weights, prox_scalar=prox_scalar))
         self.all_negative = all_negative
         self.offset = offset
         if B is not None:
@@ -49,11 +48,7 @@ class ExtensiveFormGame:
             else:
                 self._B = B.tocsr()
         else:
-            self._B = None  # A_=self._A.toarray()  # pass
-
-    def get_reach_matrix(self, player):
-        results = self._reach[player].toarray()
-        return results
+            self._B = None  # A_=self._A.toarray()
 
     def domain(self, player):
         return self._domains[player]
@@ -82,10 +77,7 @@ class ExtensiveFormGame:
         g = self.utility_for(player, opponent_strategy)
         regrets, _ = self.domain(player).infoset_regrets(g, strategy)
         reach = self.reach(player, opponent_strategy)
-        if min(reach) == 0:
-            print(f"player: {player}\n"
-                  f"reach: {reach}\n")
-
+        assert min(reach) > 0, "Reach probability must be positive"
         regrets /= reach
         return max(regrets), np.argmax(regrets)
 

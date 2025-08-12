@@ -31,7 +31,7 @@ class TreeplexDomain:
                 prox_weight_scalar = 1.0
         self._info_w = self._weights(infoset_weights=prox_infoset_weights, weight_scalar=prox_scalar)
         self._prox = TreeplexEntropyProx(self,
-            self._weights(infoset_weights=prox_infoset_weights, weight_scalar=prox_scalar))
+                                         self._weights(infoset_weights=prox_infoset_weights, weight_scalar=prox_scalar))
         self._seq_to_str = seq_to_str
         self.seq_w()
 
@@ -56,15 +56,6 @@ class TreeplexDomain:
         seq_y = self.sequence_form(y)
         seq_x = self.sequence_form(x)
         return self.behavioral_form((1.0 - alpha) * seq_y + alpha * seq_x)
-
-    def combine_quadratic(self, y, alpha, x):
-        assert self.is_behavioral_form(x)
-        assert self.is_behavioral_form(y)
-        seq_y = self.sequence_form(y)
-        seq_x = self.sequence_form(x)
-        return self.behavioral_form(
-            (alpha - 1) * (2 * alpha - 1) / (alpha + 1) / (2 * alpha + 1) * seq_y + 6 * alpha / (alpha + 1) / (
-                    2 * alpha + 1) * seq_x)
 
     def prox(self):
         return self._prox
@@ -94,7 +85,7 @@ class TreeplexDomain:
 
     def get_information_set_index_by_seq(self, seq):
         for i in range(0, len(self._begin)):
-            if seq >= self._begin[i] and seq < self._end[i]:
+            if self._begin[i] <= seq < self._end[i]:
                 return i
 
     def get_information_set_index_by_seqs(self, seqs):
@@ -142,8 +133,7 @@ class TreeplexDomain:
         return value, response
 
     def infoset_regrets(self, g, x):
-        # for sequence form
-        # bottom up to compute the regret for every information set
+        # for sequence form strategy, compute the regret for every information set bottom-up
         response = np.zeros(self._dimension)
         response[self.root_sequence()] = 1
 
@@ -159,14 +149,9 @@ class TreeplexDomain:
             response[begin + idx] = 1.0
 
             ev_we_got = x[begin:end].dot(what_we_got[begin:end])
-            # ev_we_could_have_gotten = what_we_could_have_gotten[begin + idx]
-
-            # regrets[i] = ev_we_could_have_gotten - ev_we_got
-
             regrets[i] = max(what_we_got[begin:end]) - ev_we_got
-            # print(regrets[i], max(what_we_got[begin:end]), ev_we_got)
             if parent != self.root_sequence():
-                what_we_got[parent] += ev_we_got  # what_we_could_have_gotten[parent] += ev_we_could_have_gotten
+                what_we_got[parent] += ev_we_got
         return regrets, response
 
     def sequence_form(self, x):
@@ -350,8 +335,6 @@ class TreeplexEntropyProx:
 
     """
     argmin_{x in \Delta} alpha*g'x + beta*D(x, y)
-    从bregman转换成smooth
-
     """
 
     # _, br_x = prox_x(-tau, u_x, (1 - tau) * self._mu[player], br_x)
@@ -398,17 +381,17 @@ class TreeplexEntropyProx:
             Z = np.sum(z[begin:end])
             z[begin:end] /= Z  # in simplex
 
-            # # NE refinement
-            z[begin:end] = z[begin:end] * w + self._epsilon  # in perturbed simplex
+            # # NE refinement in perturbed simplex
+            z[begin:end] = z[begin:end] * w + self._epsilon
 
             best_idx = 0
             best_z = 0
-            for idx in range(begin, end):  # this can solve 0log0
+            for idx in range(begin, end):
                 if z[idx] > best_z:
                     best_idx = idx
                     best_z = z[idx]
             v = g[best_idx] + dgf_weight * (np.log(best_z) + np.log(end - begin))
-            #
+
             if parent != self._treeplex.root_sequence():
                 g[parent] += v
             else:

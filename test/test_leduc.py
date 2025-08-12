@@ -1,6 +1,6 @@
 import unittest
-import numpy as np
-from poker import leduc
+from games import leduc
+
 
 class TestLeduc(unittest.TestCase):
     def setUp(self):
